@@ -1,0 +1,10 @@
+noise_std,method,trials,mean_relative_error_percent,std_relative_error_percent,exact_support_matches
+0,ISTA,20,43.46,9.43,8
+0,FISTA,20,43.46,9.43,8
+0,MESFM,20,8.65,17.88,16
+0.05,ISTA,20,44.19,9.88,8
+0.05,FISTA,20,44.19,9.88,8
+0.05,MESFM,20,11.31,19.65,16
+0.15,ISTA,20,46.36,11.36,7
+0.15,FISTA,20,46.36,11.36,7
+0.15,MESFM,20,15.97,21.43,16
