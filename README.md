@@ -12,7 +12,12 @@ This repository investigates sparse signal recovery from underdetermined noisy l
 
 The method is studied in the setting
 
-$$y = Xw^\star + \varepsilon, \qquad X\in\mathbb{R}^{m\times n},\quad m<n,$$
+
+$$
+y = Xw^\star + \varepsilon,\qquad
+X \in \mathbb{R}^{m\times n},\qquad m < n
+$$
+
 
 where $w^\star$ is sparse and $\varepsilon$ represents measurement noise.
 
