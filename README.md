@@ -57,7 +57,7 @@ The supplied notebook uses a synthetic Gaussian sensing matrix with **40 measure
 
 It reports a **relative reconstruction error of approximately 1.25%** in this single example, calculated as
 
-$$100\,\frac{\|\widehat w-w^\star\|_2}{\|w^\star\|_2}\%.$$
+$$100\\frac{\|\widehat w-w^\star\|_2}{\|w^\star\|_2}\%.$$
 
 This is an illustrative result, **not** a general performance guarantee.
 
