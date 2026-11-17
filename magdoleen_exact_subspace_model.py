@@ -1,79 +1,134 @@
+    import numpy as np
 import matplotlib.pyplot as plt
-import numpy as np
 
 
-class MagdoleenExactSubspaceModel:
-  """Model Name: Magdoleen Exact Subspace Functional Model (MESFM)
+def mesfm_solver(X, y, rho=0.25, p=2.5, eta=0.20, max_iter=400, eps=1e-8):
+    """
+    Magdoleen Exact Subspace Functional Model (MESFM)
+    Two-stage adaptive thresholding and subspace least-squares refinement.
 
-  Author: Dr. Magdoleen Mutseam Mudawi
-  """
+    Parameters
+    ----------
+    X : ndarray of shape (m, n)
+        Sensing matrix.
+    y : ndarray of shape (m,)
+        Observation vector.
+    rho : float, default=0.25
+        Threshold scaling parameter.
+    p : float, default=2.5
+        Adaptive thresholding exponent.
+    eta : float, default=0.20
+        Relative infinity-norm cutoff for active support selection.
+    max_iter : int, default=400
+        Number of Stage I iterations.
+    eps : float, default=1e-8
+        Numerical stabilization constant.
 
-  def __init__(self, lambda_ratio=0.25, p_fractal=2.5, n_iterations=400):
-    self.lambda_ratio = lambda_ratio
-    self.p = p_fractal
-    self.n_iterations = n_iterations
-    self.weights = None
-    self.cost_history = []
+    Returns
+    -------
+    w_refined : ndarray of shape (n,)
+        Final coefficient estimate after least-squares refinement on selected support.
+    w_stage1 : ndarray of shape (n,)
+        Coefficient estimate after Stage I adaptive thresholding.
+    selected_support : ndarray
+        Indices of the selected active support.
+    cost_history : list of float
+        Least-squares residual cost (0.5 * ||Xw - y||_2^2) recorded after each update.
+    """
+    n = X.shape[1]
+    w = np.zeros(n)
 
-  def _fractal_thresholding(self, z, threshold):
-    abs_z = np.abs(z)
-    mask = abs_z > threshold
-    adaptive_shift = threshold / (1.0 + (abs_z / (threshold + 1e-8)) ** self.p)
-    return np.where(mask, np.sign(z) * (abs_z - adaptive_shift), 0.0)
+    # Safe Lipschitz step-size calibration (guards against zero sensing matrix L = 0)
+    L = np.linalg.norm(X, 2) ** 2
+    if L <= 1e-15:
+        return w.copy(), w.copy(), np.array([], dtype=int), []
 
-  def fit(self, X, y):
-    m, n = X.shape
-    self.weights = np.zeros(n)
-    self.cost_history = []
-
-    # Lipschitz constant (Spectral Norm)
-    L = np.linalg.norm(X, ord=2) ** 2
     alpha = 1.0 / L
+    tau = rho * alpha * np.max(np.abs(X.T @ y))
 
-    # Stage 1: Fractal Functional Thresholding
-    for i in range(self.n_iterations):
-      residual = X.dot(self.weights) - y
-      gradient = X.T.dot(residual)
-      w_temp = self.weights - alpha * gradient
+    cost_history = []
 
-      current_thresh = self.lambda_ratio * alpha * np.max(np.abs(X.T.dot(y)))
-      self.weights = self._fractal_thresholding(w_temp, current_thresh)
+    # Stage I: Lipschitz-Calibrated Adaptive Thresholding
+    for _ in range(max_iter):
+        z = w - alpha * (X.T @ (X @ w - y))
+        abs_z = np.abs(z)
 
-      mse_cost = 0.5 * np.linalg.norm(residual) ** 2
-      self.cost_history.append(mse_cost)
+        # Evaluate adaptive shrinkage formula strictly on active entries exceeding tau
+        w = np.zeros_like(z)
+        mask = abs_z > tau
+        if np.any(mask):
+            abs_m = abs_z[mask]
+            w[mask] = np.sign(z[mask]) * (abs_m - tau / (1.0 + (abs_m / (tau + eps)) ** p))
 
-    # Stage 2: Hilbert Subspace Orthogonal Projection
-    max_peak = np.max(np.abs(self.weights))
-    if max_peak > 0:
-      active_support = np.where(np.abs(self.weights) > 0.20 * max_peak)[0]
-      if len(active_support) > 0:
-        X_subspace = X[:, active_support]
-        w_exact, _, _, _ = np.linalg.lstsq(X_subspace, y, rcond=None)
-        self.weights = np.zeros(n)
-        self.weights[active_support] = w_exact
+        # Record least-squares data-fidelity cost AFTER updating w
+        residual_cost = 0.5 * np.linalg.norm(X @ w - y) ** 2
+        cost_history.append(residual_cost)
 
-    return self
+    w_stage1 = w.copy()
 
-  def predict(self, X):
-    return X.dot(self.weights)
+    # Stage II: Relative Infinity-Norm Support Selection
+    peak = np.max(np.abs(w_stage1))
+    if peak > 0:
+        selected_support = np.flatnonzero(np.abs(w_stage1) > eta * peak)
+    else:
+        selected_support = np.array([], dtype=int)
+
+    # Stage III: Support-Restricted Least-Squares Refinement
+    w_refined = np.zeros(n)
+    if len(selected_support) > 0:
+        w_refined[selected_support] = np.linalg.lstsq(X[:, selected_support], y, rcond=None)[0]
+
+    return w_refined, w_stage1, selected_support, cost_history
+
+
+def run_synthetic_demo():
+    """Reproducible synthetic demonstration matching seed 42 configuration."""
+    rng = np.random.RandomState(42)
+    m, n = 40, 100
+    X = rng.randn(m, n) / np.sqrt(m)
+
+    true_support = np.array([10, 25, 50, 75, 90])
+    true_values = np.array([2.5, 1.8, 3.2, -2.0, 1.5])
+    w_true = np.zeros(n)
+    w_true[true_support] = true_values
+
+    noise = rng.normal(0.0, 0.05, size=m)
+    y = X @ w_true + noise
+
+    w_refined, w_stage1, supp_hat, cost_history = mesfm_solver(
+        X, y, rho=0.25, p=2.5, eta=0.20, max_iter=400
+    )
+
+    err_stage1 = np.linalg.norm(w_stage1 - w_true) / np.linalg.norm(w_true) * 100.0
+    err_refined = np.linalg.norm(w_refined - w_true) / np.linalg.norm(w_true) * 100.0
+
+    print("=== MESFM Reproducible Synthetic Demonstration (Seed 42) ===")
+    print(f"True Support Indices     : {true_support.tolist()}")
+    print(f"Selected Support Indices : {supp_hat.tolist()}")
+    print(f"Exact Support Match      : {set(supp_hat) == set(true_support)} ({len(supp_hat)}/{len(true_support)})")
+    print(f"Stage I Relative Error   : {err_stage1:.4f}%")
+    print(f"Refined Relative Error   : {err_refined:.4f}%")
+
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)
+    plt.stem(w_true, linefmt="k-", markerfmt="ko", basefmt="k-", label="True Signal")
+    plt.stem(w_refined, linefmt="r--", markerfmt="rx", basefmt="k-", label="MESFM Refined")
+    plt.title("Sparse Signal Reconstruction")
+    plt.xlabel("Coefficient Index")
+    plt.ylabel("Amplitude")
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(cost_history, color="navy", linewidth=1.5)
+    plt.title("Stage I Residual Cost History")
+    plt.xlabel("Iteration")
+    plt.ylabel(r"$\frac{1}{2}\|Xw^{(k)} - y\|_2^2$")
+    plt.grid(True, linestyle="--", alpha=0.5)
+    plt.tight_layout()
+    plt.savefig("mesfm_demo_plot.png", dpi=150)
+    plt.close()
 
 
 if __name__ == "__main__":
-  np.random.seed(42)
-  m_measurements = 40
-  n_features = 100
-
-  X = np.random.randn(m_measurements, n_features) / np.sqrt(m_measurements)
-  true_weights = np.zeros(n_features)
-  true_weights[[10, 25, 50, 75, 90]] = [2.5, -1.8, 3.2, -2.0, 1.5]
-
-  noise = np.random.normal(0, 0.05, size=m_measurements)
-  y = X.dot(true_weights) + noise
-
-  model = MagdoleenExactSubspaceModel()
-  model.fit(X, y)
-
-  error = np.linalg.norm(model.weights - true_weights) / np.linalg.norm(
-      true_weights
-  )
-  print(f"Model successfully executed! Recovery Relative Error: {error:.2%}")
+    run_synthetic_demo()
+    
