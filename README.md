@@ -30,11 +30,15 @@ $$z^{(k)}=w^{(k)}-\alpha X^T(Xw^{(k)}-y),\qquad w^{(k+1)}=T_{\tau,p}(z^{(k)}),$$
 
 with componentwise thresholding
 
-$$T_{\tau,p}(z)=\begin{cases}0,&|z|\le\tau,\\ \operatorname{sign}(z)\left(|z|-\frac{\tau}{1+(|z|/(\tau+10^{-8}))^p}\right),&|z|>\tau.\end{cases}$$
 
-The threshold is $\tau=\rho\alpha\|X^Ty\|_\infty$. Following the iterations, the selected support is
+$$
+T_{\tau,p}(z)=
+\begin{cases}
+0 & \text{if } |z|\leq\tau \\
+\mathrm{sgn}(z)\left(|z|-\frac{\tau}{1+(|z|/(\tau+10^{-8}))^p}\right) & \text{if } |z|>\tau
+\end{cases}
+$$
 
-$$\widehat S=\{i:|w_i|>\eta\|w\|_\infty\},$$
 
 and the final estimate solves
 
