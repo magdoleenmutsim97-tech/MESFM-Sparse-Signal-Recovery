@@ -14,10 +14,9 @@ This repository investigates sparse signal recovery from underdetermined noisy l
 
 The method is studied in the setting
 
-$$
-y = Xw^\star + \varepsilon,\qquad
-X \in \mathbb{R}^{m\times n},\qquad m < n
-$$
+```math
+y = Xw^\star + \varepsilon,\qquad X \in \mathbb{R}^{m\times n},\qquad m < n
+```
 
 where $w^\star$ is sparse and $\varepsilon$ represents measurement noise.
 
@@ -25,37 +24,45 @@ The project name contains “Exact,” referring to exact subspace projection on
 
 ## Method
 
-For $f(w)=\frac12\|Xw-y\|_2^2$, the implementation uses
+For $f(w)=\frac{1}{2}\lVert Xw-y\rVert_2^2$, the implementation uses
 
-$$L=\|X\|_2^2,\qquad \alpha=1/L,\qquad \tau=\rho\alpha\|X^T y\|_\infty,$$
+```math
+L=\lVert X\rVert_2^2,\qquad \alpha=1/L,\qquad \tau=\rho\alpha\lVert X^T y\rVert_\infty,
+```
 
 and updates
 
-$$z^{(k)}=w^{(k)}-\alpha X^T(Xw^{(k)}-y),\qquad w^{(k+1)}=T_{\tau,p}(z^{(k)}),$$
+```math
+z^{(k)}=w^{(k)}-\alpha X^T(Xw^{(k)}-y),\qquad w^{(k+1)}=T_{\tau,p}(z^{(k)}),
+```
 
 with componentwise adaptive thresholding
 
-$$
+```math
 T_{\tau,p}(z)=
 \begin{cases}
 0 & \text{if } |z|\leq\tau \\
 \mathrm{sgn}(z)\left(|z|-\frac{\tau}{1+(|z|/(\tau+10^{-8}))^p}\right) & \text{if } |z|>\tau
 \end{cases}
-$$
+```
 
-After $K$ iterations, coordinates exceeding $\eta\|w^{(K)}\|_\infty$ define $\widehat S$, and the final estimate solves
+After $K$ iterations, coordinates exceeding $\eta\lVert w^{(K)}\rVert_\infty$ define $\widehat S$, and the final estimate solves
 
-$$\widehat w_{\widehat S}=\arg\min_v\|X_{\widehat S}v-y\|_2^2,\qquad \widehat w_{\widehat S^c}=0.$$
+```math
+\widehat w_{\widehat S}=\arg\min_v\lVert X_{\widehat S}v-y\rVert_2^2,\qquad \widehat w_{\widehat S^c}=0.
+```
 
 The implementation uses `numpy.linalg.lstsq` for this refinement. Because $T_{\tau,p}$ is discontinuous at $|z|=\tau$, the Lipschitz step size alone does not prove convergence of the complete algorithm.
 
 ## Illustrative Experiment (Figure 1)
 
-The illustrative example uses a synthetic Gaussian sensing matrix with **40 measurements**, **100 features**, **5 nonzero coefficients** on $\{10, 25, 50, 75, 90\}$, noise standard deviation **0.05**, random seed **42**, **400 iterations**, $\rho=0.25$, $p=2.5$, and $\eta=0.20$.
+The illustrative example uses a synthetic Gaussian sensing matrix with **40 measurements**, **100 features**, **5 nonzero coefficients** on $\lbrace 10, 25, 50, 75, 90 \rbrace$, noise standard deviation **0.05**, random seed **42**, **400 iterations**, $\rho=0.25$, $p=2.5$, and $\eta=0.20$.
 
 On this instance, MESFM achieves **exact support recovery with approximately 1.25% relative coefficient error**, measured as
 
-$$100\frac{\|\widehat w-w^\star\|_2}{\|w^\star\|_2}\%.$$
+```math
+100\frac{\lVert\widehat w-w^\star\rVert_2}{\lVert w^\star\rVert_2}\%.
+```
 
 This single-seed example is illustrative and is complemented by the multi-seed statistical benchmarks below.
 
@@ -75,3 +82,16 @@ Python 3.8+ with `numpy`, `scipy`, and `matplotlib` is required for `reproduce_b
 
 ```bash
 python -m pip install numpy scipy matplotlib
+```
+
+### Reproduce All Manuscript Results
+```bash
+python reproduce_benchmarks.py --all
+```
+
+### Reproduce Individual Tables, Validations, and Figures
+```bash
+python reproduce_benchmarks.py --table1       # Table 1: 1,800 runs across 300 seed-noise pairs (seeds 0–99; sigma in {0.00, 0.05, 0.15})
+python reproduce_benchmarks.py --table2       # Table 2: Paired Wilcoxon, 95% bootstrap CI, and exact McNemar tests (seeds 0–99)
+python reproduce_benchmarks.py --table3       # Table 3: Sparsity scaling (seeds 500–549) & measurement scaling (seeds 1000–1049)
+python reproduce_benchmarks.py --validation   # Section 5.1: Independent 100-seed parameter validation (seeds 1
