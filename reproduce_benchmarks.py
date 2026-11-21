@@ -250,4 +250,4 @@ def run_table1_and_table2(show_table1=True, show_table2=True):
                 d = all_results[sigma][name]
                 errs = np.array(d["err"])
                 print(
-                    f"{sigma:6.2f} | {name:<15} | {np.mean(errs):6.2f}% | {np.median(errs):6.2f
+                   f"{sigma:6.2f} | {name:<15} | {np.mean(errs):6.2f}% | {np.median(errs):6.2f}% | "
