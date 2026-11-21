@@ -249,5 +249,8 @@ def run_table1_and_table2(show_table1=True, show_table2=True):
             for name in methods:
                 d = all_results[sigma][name]
                 errs = np.array(d["err"])
-                print(
-                   f"{sigma:6.2f} | {name:<15} | {np.mean(errs):6.2f}% | {np.median(errs):6.2f}% | "
+               print(
+                    f"{sigma:6.2f} | {name:<15} | {np.mean(errs):6.2f}% | {np.median(errs):6.2f}% | "
+                    f"{np.std(errs, ddof=1):6.2f}% | {sum(d['sup']):>3d}/100    | "
+                    f"{sum(d['raw']):>3d}/100  | {np.mean(d['time']):8.2f}"
+                )
